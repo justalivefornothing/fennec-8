@@ -6,14 +6,17 @@ import { Panel } from './Panel'
 interface Props {
   assembled: Assembled | null
   pc: number
+  /** Scroll the lit row into view; off while the clock is too fast to read. */
+  follow: boolean
 }
 
 /** Address / bytes / source, with the instruction at PC lit. */
-export function Listing({ assembled, pc }: Props) {
+export function Listing({ assembled, pc, follow }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const activeLine = assembled?.lineAt[pc]
 
   useEffect(() => {
+    if (!follow) return
     const box = scrollRef.current
     const row = box?.querySelector<HTMLElement>('[data-active="true"]')
     if (!box || !row) return
@@ -23,7 +26,7 @@ export function Listing({ assembled, pc }: Props) {
     if (r.top < b.top || r.bottom > b.bottom) {
       box.scrollTop += r.top - b.top - b.height / 2 + r.height / 2
     }
-  }, [activeLine])
+  }, [activeLine, follow])
 
   const size = assembled?.bytes.length ?? 0
   return (

@@ -29,7 +29,7 @@ export interface AsmError {
   message: string
 }
 
-export type Status = 'idle' | 'ready' | 'running' | 'paused' | 'halted' | 'fault'
+export type Status = 'idle' | 'error' | 'ready' | 'running' | 'paused' | 'halted' | 'fault'
 
 export const HZ_OPTIONS = [
   { hz: 4, label: '4 Hz' },
@@ -223,7 +223,7 @@ export function useEmulator() {
     return () => cancelAnimationFrame(raf)
   }, [running, hz, publish])
 
-  let status: Status = 'idle'
+  let status: Status = error ? 'error' : 'idle'
   if (assembled) {
     if (snap.fault) status = 'fault'
     else if (snap.halted) status = 'halted'

@@ -3,6 +3,7 @@ import { Console } from './components/Console'
 import { Controls } from './components/Controls'
 import { Display } from './components/Display'
 import { Editor } from './components/Editor'
+import { IsaReference } from './components/IsaReference'
 import { Listing } from './components/Listing'
 import { MemoryGrid } from './components/MemoryGrid'
 import { Registers } from './components/Registers'
@@ -77,15 +78,16 @@ export default function App() {
             error={emu.error}
             dirty={emu.dirty}
           />
-          <Listing assembled={emu.assembled} pc={emu.snap.pc} />
+          <Listing assembled={emu.assembled} pc={emu.snap.pc} follow={!emu.running || emu.hz <= 120} />
         </div>
         <div className="flex min-w-0 flex-col gap-3">
           <Registers snap={emu.snap} />
           <Display mem={emu.snap.mem} />
           <Console output={emu.snap.output} />
         </div>
-        <div className="min-w-0 md:col-span-2 xl:col-span-1">
+        <div className="flex min-w-0 flex-col gap-3 md:col-span-2 xl:col-span-1">
           <MemoryGrid snap={emu.snap} programSize={programSize} onPoke={emu.poke} />
+          <IsaReference />
         </div>
       </main>
 

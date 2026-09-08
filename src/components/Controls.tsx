@@ -3,6 +3,7 @@ import { HZ_OPTIONS, type Emulator, type Status } from '../hooks/useEmulator'
 
 const STATUS_LABEL: Record<Status, string> = {
   idle: 'Idle',
+  error: 'Assemble error',
   ready: 'Ready',
   running: 'Running',
   paused: 'Paused',
@@ -12,6 +13,7 @@ const STATUS_LABEL: Record<Status, string> = {
 
 const STATUS_TONE: Record<Status, string> = {
   idle: 'bg-sand-deep/50 text-ink-soft',
+  error: 'bg-red-800 text-sand',
   ready: 'bg-sand-dark text-ink',
   running: 'bg-ember text-sand',
   paused: 'bg-ember/60 text-sand',
