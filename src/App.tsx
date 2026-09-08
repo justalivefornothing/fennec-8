@@ -15,7 +15,9 @@ const isTyping = (el: EventTarget | null) =>
 export default function App() {
   const emu = useEmulator()
   const emuRef = useRef(emu)
-  emuRef.current = emu
+  useEffect(() => {
+    emuRef.current = emu
+  })
 
   // Single-key shortcuts when focus is not inside a form control.
   useEffect(() => {

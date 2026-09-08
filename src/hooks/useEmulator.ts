@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { AssembleError, assemble, type Assembled } from '../core/assembler'
 import { CPU, type StepResult } from '../core/cpu'
 import { DEFAULT_EXAMPLE_ID, EXAMPLES } from '../core/examples'
@@ -44,21 +44,36 @@ export const HZ_OPTIONS = [
 const MAX_STEPS_PER_FRAME = 50_000
 
 /** Bookkeeping that lives outside the CPU: change timestamps for the UI flashes. */
-interface Meta {
-  memStamp: Float64Array
-  regStamp: number[]
-  flagStamp: number
-  steps: number
-  lastOp: OpDef | null
-}
+class Meta {
+  readonly memStamp = new Float64Array(MEM_SIZE)
+  readonly regStamp = [0, 0, 0, 0]
+  flagStamp = 0
+  steps = 0
+  lastOp: OpDef | null = null
 
-const freshMeta = (): Meta => ({
-  memStamp: new Float64Array(MEM_SIZE),
-  regStamp: [0, 0, 0, 0],
-  flagStamp: 0,
-  steps: 0,
-  lastOp: null,
-})
+  reset(): void {
+    this.memStamp.fill(0)
+    this.regStamp.fill(0)
+    this.flagStamp = 0
+    this.steps = 0
+    this.lastOp = null
+  }
+
+  /** Note everything a step changed. */
+  record(r: StepResult, now: number): void {
+    for (const a of r.memWrites) this.memStamp[a] = now
+    for (const i of r.regWrites) this.regStamp[i] = now
+    if (r.flagsChanged) this.flagStamp = now
+    if (r.op) {
+      this.lastOp = r.op
+      this.steps++
+    }
+  }
+
+  touch(addr: number, now: number): void {
+    this.memStamp[addr & 0xff] = now
+  }
+}
 
 function snapshotOf(cpu: CPU, meta: Meta): Snapshot {
   return {
@@ -80,36 +95,33 @@ function snapshotOf(cpu: CPU, meta: Meta): Snapshot {
   }
 }
 
-function record(meta: Meta, r: StepResult, now: number): void {
-  for (const a of r.memWrites) meta.memStamp[a] = now
-  for (const i of r.regWrites) meta.regStamp[i] = now
-  if (r.flagsChanged) meta.flagStamp = now
-  if (r.op) {
-    meta.lastOp = r.op
-    meta.steps++
-  }
-}
-
 function exampleSource(id: string): string {
   return EXAMPLES.find((e) => e.id === id)?.source ?? ''
 }
 
+const INITIAL_SOURCE = exampleSource(DEFAULT_EXAMPLE_ID)
+
 export function useEmulator() {
-  const cpuRef = useRef<CPU>(null)
-  if (!cpuRef.current) cpuRef.current = new CPU()
-  const metaRef = useRef<Meta>(null)
-  if (!metaRef.current) metaRef.current = freshMeta()
+  // The CPU and its bookkeeping are mutable instances that outlive renders;
+  // they are only ever mutated from event handlers and the scheduler effect.
+  const [cpu] = useState(() => new CPU())
+  const [meta] = useState(() => new Meta())
 
-  const [source, setSource] = useState(() => exampleSource(DEFAULT_EXAMPLE_ID))
+  const [source, setSource] = useState(INITIAL_SOURCE)
   const [exampleId, setExampleId] = useState(DEFAULT_EXAMPLE_ID)
-  const [assembled, setAssembled] = useState<Assembled | null>(null)
-  const [assembledSource, setAssembledSource] = useState<string | null>(null)
+  // The bundled program is assembled and loaded on first render; `?autorun` starts the clock.
+  const [assembled, setAssembled] = useState<Assembled | null>(() => {
+    const result = assemble(INITIAL_SOURCE)
+    cpu.load(result.bytes)
+    return result
+  })
+  const [assembledSource, setAssembledSource] = useState<string | null>(INITIAL_SOURCE)
   const [error, setError] = useState<AsmError | null>(null)
-  const [running, setRunning] = useState(false)
+  const [running, setRunning] = useState(() => window.location.search.includes('autorun'))
   const [hz, setHz] = useState<number>(1000)
-  const [snap, setSnap] = useState<Snapshot>(() => snapshotOf(cpuRef.current!, metaRef.current!))
+  const [snap, setSnap] = useState<Snapshot>(() => snapshotOf(cpu, meta))
 
-  const publish = useCallback(() => setSnap(snapshotOf(cpuRef.current!, metaRef.current!)), [])
+  const publish = useCallback(() => setSnap(snapshotOf(cpu, meta)), [cpu, meta])
 
   /** Assemble `src` and load the result into a fresh CPU. */
   const assembleSource = useCallback(
@@ -117,8 +129,8 @@ export function useEmulator() {
       setRunning(false)
       try {
         const result = assemble(src)
-        cpuRef.current!.load(result.bytes)
-        metaRef.current = freshMeta()
+        cpu.load(result.bytes)
+        meta.reset()
         setAssembled(result)
         setAssembledSource(src)
         setError(null)
@@ -133,41 +145,32 @@ export function useEmulator() {
         return null
       }
     },
-    [publish],
+    [cpu, meta, publish],
   )
 
   const doAssemble = useCallback(() => assembleSource(source), [assembleSource, source])
 
-  // Assemble the bundled program on first load; `?autorun` also starts the clock.
-  useEffect(() => {
-    if (assembleSource(exampleSource(DEFAULT_EXAMPLE_ID)) && window.location.search.includes('autorun')) {
-      setRunning(true)
-    }
-  }, [assembleSource])
-
   const reset = useCallback(() => {
     setRunning(false)
-    const cpu = cpuRef.current!
     if (assembled) cpu.load(assembled.bytes)
     else cpu.reset()
-    metaRef.current = freshMeta()
+    meta.reset()
     publish()
-  }, [assembled, publish])
+  }, [assembled, cpu, meta, publish])
 
   const step = useCallback(() => {
     setRunning(false)
     if (!assembled && !doAssemble()) return
-    const cpu = cpuRef.current!
     if (cpu.halted) return
-    record(metaRef.current!, cpu.step(), performance.now())
+    meta.record(cpu.step(), performance.now())
     publish()
-  }, [assembled, doAssemble, publish])
+  }, [assembled, cpu, meta, doAssemble, publish])
 
   const run = useCallback(() => {
     if (!assembled && !doAssemble()) return
-    if (cpuRef.current!.halted) return
+    if (cpu.halted) return
     setRunning(true)
-  }, [assembled, doAssemble])
+  }, [assembled, cpu, doAssemble])
 
   const pause = useCallback(() => setRunning(false), [])
 
@@ -178,11 +181,11 @@ export function useEmulator() {
 
   const poke = useCallback(
     (addr: number, value: number) => {
-      cpuRef.current!.mem[addr & 0xff] = value & 0xff
-      metaRef.current!.memStamp[addr & 0xff] = performance.now()
+      cpu.poke(addr, value)
+      meta.touch(addr, performance.now())
       publish()
     },
-    [publish],
+    [cpu, meta, publish],
   )
 
   const loadExample = useCallback(
@@ -198,7 +201,6 @@ export function useEmulator() {
   // Scheduler: spend `hz` cycles per second, batched per animation frame.
   useEffect(() => {
     if (!running) return
-    const cpu = cpuRef.current!
     let raf = 0
     let last = performance.now()
     let budget = 0
@@ -210,7 +212,7 @@ export function useEmulator() {
       while (budget >= 1 && !cpu.halted && guard++ < MAX_STEPS_PER_FRAME) {
         const r = cpu.step()
         budget -= r.cycles
-        record(metaRef.current!, r, now)
+        meta.record(r, now)
       }
       publish()
       if (cpu.halted) {
@@ -221,7 +223,7 @@ export function useEmulator() {
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [running, hz, publish])
+  }, [running, hz, cpu, meta, publish])
 
   let status: Status = error ? 'error' : 'idle'
   if (assembled) {

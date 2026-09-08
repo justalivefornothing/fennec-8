@@ -52,6 +52,11 @@ export class CPU {
     this.mem.set(program.subarray(0, MEM_SIZE), 0)
   }
 
+  /** Front-panel write: change one byte without touching CPU state. */
+  poke(addr: number, value: number): void {
+    this.mem[addr & 0xff] = value & 0xff
+  }
+
   private fetch(): number {
     const b = this.mem[this.pc]
     this.pc = (this.pc + 1) & 0xff
