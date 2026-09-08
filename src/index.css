@@ -30,6 +30,81 @@ body,
 
 body {
   background-color: var(--color-umber);
+  background-image:
+    radial-gradient(ellipse at top, rgba(255, 138, 61, 0.06), transparent 60%),
+    repeating-linear-gradient(0deg, transparent 0 3px, rgba(0, 0, 0, 0.06) 3px 4px);
   color: var(--color-sand);
   font-family: var(--font-mono);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── memory grid ─────────────────────────────────────────────────────────── */
+
+@utility mem-head {
+  @apply px-1 text-[10px] leading-6 text-ink-soft/70 select-none;
+}
+
+@utility mem-cell {
+  @apply block h-6 min-w-0 rounded-[2px] text-center text-[11px] leading-6 tracking-tight outline-none;
+  @apply hover:bg-sand-deep/70 focus-visible:ring-2 focus-visible:ring-ember focus-visible:ring-inset;
+}
+
+.mem-sp {
+  box-shadow: inset 0 0 0 1px var(--color-ink);
+}
+
+/* Changed bytes flash orange and fade over 400ms. */
+@keyframes flash {
+  from {
+    background-color: var(--color-ember-bright);
+    color: var(--color-umber-deep);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+.flash {
+  animation: flash 400ms ease-out both;
+}
+
+/* Bright white-hot digits that cool back to ember. */
+@keyframes lcd-flash {
+  from {
+    filter: brightness(1.8);
+    text-shadow: 0 0 10px var(--color-ember-glow);
+  }
+  to {
+    filter: brightness(1);
+    text-shadow: 0 0 2px rgba(255, 138, 61, 0.35);
+  }
+}
+
+.lcd {
+  text-shadow: 0 0 2px rgba(255, 138, 61, 0.35);
+}
+
+.lcd-flash {
+  animation: lcd-flash 400ms ease-out both;
+}
+
+@keyframes led-flash {
+  from {
+    transform: scale(1.35);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+.led-flash {
+  animation: led-flash 400ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flash,
+  .lcd-flash,
+  .led-flash {
+    animation-duration: 1ms;
+  }
 }
