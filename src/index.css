@@ -1,0 +1,35 @@
+@import 'tailwindcss';
+@import '@fontsource/share-tech-mono/400.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/600.css';
+@import '@fontsource/chakra-petch/600.css';
+@import '@fontsource/chakra-petch/700.css';
+
+@theme {
+  --color-umber: #2b211a;
+  --color-umber-deep: #1f1712;
+  --color-umber-light: #3a2d24;
+  --color-sand: #e8dcc4;
+  --color-sand-dark: #d8c9a9;
+  --color-sand-deep: #c4b18b;
+  --color-ink: #2b211a;
+  --color-ink-soft: #6b5a48;
+  --color-ember: #c8551a;
+  --color-ember-bright: #ff8a3d;
+  --color-ember-glow: #ffb066;
+  --font-lcd: 'Share Tech Mono', ui-monospace, monospace;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-display: 'Chakra Petch', ui-sans-serif, sans-serif;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  background-color: var(--color-umber);
+  color: var(--color-sand);
+  font-family: var(--font-mono);
+}
